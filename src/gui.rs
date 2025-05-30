@@ -1,7 +1,8 @@
 mod common;
 use common::EguiDrawer;
 
-pub mod editor;
-pub mod solver;
+mod editor;
+mod solver;
 
+pub use editor::EditorApp;
 pub use solver::SolverApp;

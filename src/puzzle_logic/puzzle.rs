@@ -10,6 +10,11 @@ impl Dot {
     pub fn new(x: f32, y: f32) -> Self {
         Dot { x, y }
     }
+    pub fn dist2(&self, other: &Dot) -> f32 {
+        let dx = self.x - other.x;
+        let dy = self.y - other.y;
+        (dx * dx + dy * dy).sqrt()
+    }
     pub fn dist(&self, other: &Dot) -> f32 {
         let dx = self.x - other.x;
         let dy = self.y - other.y;
@@ -86,10 +91,15 @@ pub enum ComplexityColor {
     White,
 }
 
+use eframe::egui::Color32;
+
 pub struct Puzzle {
     pub dots: Vec<Dot>,
     pub lines: Vec<LineIndex>,
-    pub panes: Vec<Vec<(LineIndex, PaneIndex)>>,
+
+    pub panes: Vec<Dot>,
+    pub cell_size: f32,
+    pub pane_nears: Vec<Vec<(LineIndex, PaneIndex)>>,
 
     pub start_dots: Vec<DotIndex>,
     pub end_dots: Vec<DotIndex>,
@@ -97,6 +107,11 @@ pub struct Puzzle {
     pub dot_complexity: HashMap<DotIndex, DotComplexity>,
     pub line_complexity: HashMap<LineIndex, LineComplexity>,
     pub pane_complexity: HashMap<PaneIndex, PaneComplexity>,
+
+    pub line_width: f32,
+    pub background_color: Color32,
+    pub puzzle_color: Color32,
+    pub solution_color: Color32,
 }
 
 impl Default for Puzzle {
@@ -105,6 +120,8 @@ impl Default for Puzzle {
         let padding = 1.0;
         let endline_length = 0.5;
         let size = padding * 2.0 + (n - 1) as f32;
+
+        let cell_size = 1.0 / size;
 
         let mut dots: Vec<Dot> = Vec::new();
 
@@ -154,13 +171,19 @@ impl Default for Puzzle {
             }
         }
 
-        let mut panes: Vec<Vec<(LineIndex, PaneIndex)>> = Vec::new();
+        let mut panes: Vec<Dot> = Vec::new();
+        let mut pane_nears: Vec<Vec<(LineIndex, PaneIndex)>> = Vec::new();
         let m = n - 1;
-        panes.resize(m * m, Vec::new());
+        pane_nears.resize(m * m, Vec::new());
         for y in 0..m {
             for x in 0..m {
                 let ind = y * m + x;
-                let vec = &mut panes[ind];
+                let vec = &mut pane_nears[ind];
+                {
+                    let x = (padding + (x as f32) + 0.5) / size;
+                    let y = (padding + (y as f32) + 0.5) / size;
+                    panes.push(Dot { x, y });
+                }
 
                 if x > 0 {
                     let ind_near = ind - 1; // left
@@ -203,11 +226,19 @@ impl Default for Puzzle {
             dots,
             lines,
             panes,
+            cell_size,
+            pane_nears,
             start_dots,
             end_dots,
             dot_complexity,
             line_complexity: HashMap::new(),
             pane_complexity: HashMap::new(),
+
+            line_width: 0.035,
+            background_color: Color32::from_rgb(228, 165, 0),
+            puzzle_color: Color32::from_rgb(61, 46, 3),
+            // solution_color: Color32::from_rgb(255, 234, 84),
+            solution_color: Color32::from_rgb(255, 255, 255),
         }
     }
 }

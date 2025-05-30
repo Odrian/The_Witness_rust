@@ -100,7 +100,7 @@ impl<'a> SolutionChecker<'a> {
 }
 
 fn find_components(puzzle: &Puzzle, line_path: &[LineIndex]) -> Vec<Vec<PaneIndex>> {
-    let n = puzzle.panes.len();
+    let n = puzzle.pane_nears.len();
     let mut color: Vec<i32> = vec![0; n]; // 0
     let mut group: Vec<i32> = vec![-1; n];
     let mut group_id_counter = 0;
@@ -118,7 +118,7 @@ fn find_components(puzzle: &Puzzle, line_path: &[LineIndex]) -> Vec<Vec<PaneInde
         while let Some(id1) = stack.pop() {
             color[id1] = 2;
             group[id1] = group_id;
-            let near = &puzzle.panes[id];
+            let near = &puzzle.pane_nears[id];
             for (line_index, PaneIndex(id2)) in near {
                 let id2 = (*id2) as usize;
                 if !line_path.contains(line_index) && color[id2] == 0 {

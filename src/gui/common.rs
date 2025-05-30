@@ -1,4 +1,4 @@
-use crate::puzzle_logic::{ComplexityColor, Dot, DotComplexity};
+use crate::puzzle_logic::*;
 use eframe::egui::{self, Stroke};
 use eframe::egui::{Color32, Pos2, Rect, Vec2};
 
@@ -80,11 +80,17 @@ impl EguiDrawer {
     pub fn draw_dot(
         &self,
         ui: &mut egui::Ui,
+        puzzle: &Puzzle,
         dot: Dot,
-        line_width: f32,
-        color: Color32,
+        is_solution: bool,
         start_dot: bool,
     ) {
+        let line_width = puzzle.line_width * self.draw_rect.width();
+        let color = if is_solution {
+            puzzle.solution_color
+        } else {
+            puzzle.puzzle_color
+        };
         let mut radius = line_width / 2.0;
         if start_dot {
             radius *= 3.0;
@@ -98,11 +104,17 @@ impl EguiDrawer {
     pub fn draw_line(
         &self,
         ui: &mut egui::Ui,
+        puzzle: &Puzzle,
         dot1: Dot,
         dot2: Dot,
-        line_width: f32,
-        color: Color32,
+        is_solution: bool,
     ) {
+        let line_width = puzzle.line_width * self.draw_rect.width();
+        let color = if is_solution {
+            puzzle.solution_color
+        } else {
+            puzzle.puzzle_color
+        };
         let stroke = egui::Stroke::new(line_width, color);
         let pos1 = self.get_point(dot1);
         let pos2 = self.get_point(dot2);
@@ -111,10 +123,11 @@ impl EguiDrawer {
     pub fn draw_dot_complexity(
         &self,
         ui: &mut egui::Ui,
+        puzzle: &Puzzle,
         dot: Dot,
         dot_complexity: DotComplexity,
-        line_width: f32,
     ) {
+        let line_width = puzzle.line_width * self.draw_rect.width();
         let pos = self.get_point(dot);
         match dot_complexity {
             DotComplexity::BlackHexagon => ui.painter().circle_filled(
