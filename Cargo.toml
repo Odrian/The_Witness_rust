@@ -3,6 +3,11 @@ name = "the_witness"
 version = "0.1.0"
 edition = "2024"
 
+[profile.dev]
+debug = false
+split-debuginfo = "off"
+
 [dependencies]
 eframe = "0.31.1"
+enum-iterator = "2.1.0"
 rand = "0.9.1"

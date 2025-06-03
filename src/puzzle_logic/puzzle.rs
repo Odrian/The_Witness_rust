@@ -85,7 +85,7 @@ pub enum PaneComplexity {
     // Jack
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, enum_iterator::Sequence)]
 pub enum ComplexityColor {
     Black,
     White,
