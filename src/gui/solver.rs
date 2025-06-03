@@ -5,7 +5,7 @@ use eframe::egui;
 pub struct SolverApp<'a> {
     puzzle: &'a Puzzle,
     solution_manager: PuzzleSolutionManager<'a>,
-    drawer: EguiDrawer<'a>,
+    drawer: EguiDrawer,
     is_grabbing_cursor: bool,
 }
 
@@ -43,8 +43,8 @@ impl eframe::App for SolverApp<'_> {
                 egui::CornerRadius::ZERO,
                 self.puzzle.background_color,
             );
-            self.drawer.draw_puzzle(ui);
-            self.drawer.draw_path(ui, &self.solution_manager);
+            self.drawer.draw_puzzle(ui, self.puzzle);
+            self.drawer.draw_path(ui, self.puzzle, &self.solution_manager);
 
             ctx.request_repaint();
         });
@@ -56,7 +56,7 @@ impl<'a> SolverApp<'a> {
         Self {
             puzzle,
             solution_manager: PuzzleSolutionManager::new(puzzle),
-            drawer: EguiDrawer::new(puzzle),
+            drawer: EguiDrawer::new(),
             is_grabbing_cursor: false,
         }
     }

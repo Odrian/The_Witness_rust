@@ -24,7 +24,7 @@ enum SelectedComplexity {
 
 pub struct EditorApp<'a> {
     puzzle: &'a mut Puzzle,
-    // drawer: EguiDrawer<'a>,
+    drawer: EguiDrawer,
     selected_object: SelectedObject,
     selected_complexity: SelectedComplexity,
     selected_color: ComplexityColor,
@@ -32,14 +32,14 @@ pub struct EditorApp<'a> {
 
 impl eframe::App for EditorApp<'_> {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // self.drawer.update(ctx);
+        self.drawer.update(ctx);
 
-        // if let Some(pos) = self.drawer.get_mouse_pos() {
-        //     self.update_selection(pos);
-        // }
-        // if self.drawer.clicked() {
-        //     self.click();
-        // }
+        if let Some(pos) = self.drawer.get_mouse_pos() {
+            self.update_selection(pos);
+        }
+        if self.drawer.clicked() {
+            self.click();
+        }
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.painter().rect_filled(
@@ -59,7 +59,7 @@ impl<'a> EditorApp<'a> {
     pub fn new(_cc: &eframe::CreationContext<'_>, puzzle: &'a mut Puzzle) -> Self {
         Self {
             puzzle,
-            // drawer: EguiDrawer::new(puzzle),
+            drawer: EguiDrawer::new(),
             selected_object: SelectedObject::None,
             selected_complexity: SelectedComplexity::Hexagon,
             selected_color: ComplexityColor::Black,
@@ -234,7 +234,7 @@ impl EditorApp<'_> {
     }
 
     fn render_puzzle(&self, ui: &mut egui::Ui) {
-        self.drawer.draw_puzzle(ui);
+        self.drawer.draw_puzzle(ui, &self.puzzle);
 
         // TODO: APLHA SELECTION
         // let select_color = Color32::from_rgba_premultiplied(200, 200, 200, 100);
