@@ -74,6 +74,7 @@ pub enum DotComplexity {
 #[derive(Clone, Copy)]
 pub enum LineComplexity {
     BlackHexagon,
+    LineBreak,
 }
 
 #[derive(Clone, Copy)]

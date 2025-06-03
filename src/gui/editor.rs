@@ -1,10 +1,12 @@
 use super::EguiDrawer;
 use crate::puzzle_logic::*;
-use eframe::egui::{self, Color32, Pos2, Rect, Response, Stroke, Vec2};
+use eframe::egui::{self, Color32, Frame, Pos2, Rect, Response, Stroke, Vec2};
 
 const BUTTON_SIZE: f32 = 60.0;
 const SIDE_PANEL_SIZE: f32 = 80.0;
 const SIDE_PANEL_PADDING: f32 = (SIDE_PANEL_SIZE - BUTTON_SIZE) / 2.0;
+
+const SIDE_COLOR: Color32 = Color32::from_rgb(40, 40, 40);
 
 enum SelectedObject {
     None,
@@ -16,6 +18,7 @@ enum SelectedObject {
 #[derive(PartialEq, Eq, enum_iterator::Sequence)]
 enum SelectedComplexity {
     Hexagon,
+    LineBreak,
     Square,
     // Star,
     // Jack,
@@ -25,6 +28,7 @@ enum SelectedComplexity {
 pub struct EditorApp<'a> {
     puzzle: &'a mut Puzzle,
     drawer: EguiDrawer,
+
     selected_object: SelectedObject,
     selected_complexity: SelectedComplexity,
     selected_color: ComplexityColor,
@@ -59,7 +63,7 @@ impl<'a> EditorApp<'a> {
     pub fn new(_cc: &eframe::CreationContext<'_>, puzzle: &'a mut Puzzle) -> Self {
         Self {
             puzzle,
-            drawer: EguiDrawer::new(),
+            drawer: EguiDrawer::default(),
             selected_object: SelectedObject::None,
             selected_complexity: SelectedComplexity::Hexagon,
             selected_color: ComplexityColor::Black,
@@ -149,6 +153,17 @@ impl<'a> EditorApp<'a> {
                 }
                 SelectedObject::Pane(_) => {}
             },
+            SelectedComplexity::LineBreak => match self.selected_object {
+                SelectedObject::None => {}
+                SelectedObject::Dot(_) => {}
+                SelectedObject::Line(key) => {
+                    let map = &mut self.puzzle.line_complexity;
+                    if map.remove(&key).is_none() {
+                        map.insert(key, LineComplexity::LineBreak);
+                    }
+                }
+                SelectedObject::Pane(_) => {}
+            },
             SelectedComplexity::Square => match self.selected_object {
                 SelectedObject::None => {}
                 SelectedObject::Dot(_) => {}
@@ -170,6 +185,7 @@ impl EditorApp<'_> {
         egui::SidePanel::right("Color")
             .resizable(false)
             .default_width(SIDE_PANEL_SIZE)
+            .frame(Frame::NONE.fill(SIDE_COLOR))
             .show(ctx, |ui| {
                 ui.vertical_centered(|ui| {
                     enum_iterator::all::<ComplexityColor>().for_each(|color| {
@@ -181,6 +197,7 @@ impl EditorApp<'_> {
         egui::SidePanel::left("Complexity")
             .resizable(false)
             .default_width(SIDE_PANEL_SIZE)
+            .frame(Frame::NONE.fill(SIDE_COLOR))
             .show(ctx, |ui| {
                 ui.vertical_centered(|ui| {
                     enum_iterator::all::<SelectedComplexity>().for_each(|complexity| {
@@ -213,14 +230,23 @@ impl EditorApp<'_> {
         let (rect, response) = self.reserve_button(ui);
         let painter = ui.painter_at(rect);
 
+        let pos = rect.center();
+        let width = rect.width() / 1.3;
+
         match complexity {
             SelectedComplexity::Hexagon => {
-                let radius = rect.width() / 2.0 / 1.5;
-                painter.circle_filled(rect.center(), radius, Color32::BLACK);
+                self.drawer.draw_hexagon(ui, pos, width);
+            }
+            SelectedComplexity::LineBreak => {
+                let pos1 = rect.left_center();
+                let pos2 = rect.right_center();
+                let width = rect.height() / 2.0;
+                let stroke = Stroke::new(width, Color32::BLACK);
+                ui.painter().line_segment([pos1, pos2], stroke);
+                self.drawer.draw_line_break(ui, (pos1, pos2), width, SIDE_COLOR);
             }
             SelectedComplexity::Square => {
-                let rect = Rect::from_center_size(rect.center(), Vec2::splat(rect.width()));
-                painter.rect_filled(rect, 10.0, Color32::BLACK);
+                self.drawer.draw_square(ui, pos, width, ComplexityColor::Black);
             }
         };
         let selected = self.selected_complexity == complexity;
@@ -234,29 +260,29 @@ impl EditorApp<'_> {
     }
 
     fn render_puzzle(&self, ui: &mut egui::Ui) {
-        self.drawer.draw_puzzle(ui, &self.puzzle);
+        self.drawer.draw_puzzle(ui, self.puzzle);
 
-        // TODO: APLHA SELECTION
-        // let select_color = Color32::from_rgba_premultiplied(200, 200, 200, 100);
-        // match self.selected_object {
-        //     SelectedObject::None => {}
-        //     SelectedObject::Dot(dot_index) => {
-        //         let dot = self.get_dot(dot_index);
-        //         self.drawer.draw_dot(ui, self.puzzle, dot, true, false);
-        //     }
-        //     SelectedObject::Line(line_index) => {
-        //         let dot1 = self.get_dot(line_index.0);
-        //         let dot2 = self.get_dot(line_index.1);
-        //         let dot = Dot {
-        //             x: (dot1.x + dot2.x) / 2.0,
-        //             y: (dot1.y + dot2.y) / 2.0,
-        //         };
-        //         self.drawer.draw_dot(ui, self.puzzle, dot, true, false);
-        //     }
-        //     SelectedObject::Pane(pane_index) => {
-        //         let dot = self.puzzle.panes[pane_index.0 as usize];
-        //         self.drawer.draw_dot(ui, self.puzzle, dot, true, false);
-        //     }
-        // }
+        let width = self.drawer.get_line_width(self.puzzle);
+        let color = Color32::from_rgba_unmultiplied(255, 255, 255, 15);
+        match self.selected_object {
+            SelectedObject::None => {}
+            SelectedObject::Dot(dot_index) => {
+                let dot = self.get_dot(dot_index);
+                self.drawer.draw_dot(ui, dot, width, color);
+            }
+            SelectedObject::Line(line_index) => {
+                let dot1 = self.get_dot(line_index.0);
+                let dot2 = self.get_dot(line_index.1);
+                let dot = Dot {
+                    x: (dot1.x + dot2.x) / 2.0,
+                    y: (dot1.y + dot2.y) / 2.0,
+                };
+                self.drawer.draw_dot(ui, dot, width, color);
+            }
+            SelectedObject::Pane(pane_index) => {
+                let dot = self.puzzle.panes[pane_index.0 as usize];
+                self.drawer.draw_dot(ui, dot, width, color);
+            }
+        }
     }
 }

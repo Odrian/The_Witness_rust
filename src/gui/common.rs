@@ -1,6 +1,9 @@
 use crate::puzzle_logic::*;
 use eframe::egui::{self, Color32, Pos2, Rect, Vec2};
 
+const START_DOT_SCALE: f32 = 3.0;
+const PANE_SCALE: f32 = 2.0;
+
 pub struct EguiDrawer {
     now_pos: Option<Pos2>,
     last_pos: Option<Pos2>,
@@ -9,8 +12,8 @@ pub struct EguiDrawer {
     draw_rect: Rect,
 }
 
-impl EguiDrawer {
-    pub fn new() -> Self {
+impl Default for EguiDrawer {
+    fn default() -> Self {
         Self {
             now_pos: None,
             last_pos: None,
@@ -76,10 +79,12 @@ impl EguiDrawer {
             ComplexityColor::Black => Color32::BLACK,
         }
     }
+    pub fn get_line_width(&self, puzzle: &Puzzle) -> f32 {
+        puzzle.line_width * self.draw_rect.width()
+    }
     pub fn draw_puzzle(&self, ui: &mut egui::Ui, puzzle: &Puzzle) {
         let color = puzzle.puzzle_color;
         let width = puzzle.line_width * self.draw_rect.width();
-        let start_dot_scale = 3.0;
 
         let get_dot = |dot: DotIndex| puzzle.dots[dot.0 as usize];
 
@@ -88,7 +93,7 @@ impl EguiDrawer {
         }
         for &start_dot in &puzzle.start_dots {
             let dot = get_dot(start_dot);
-            self.draw_dot(ui, dot, width * start_dot_scale, color);
+            self.draw_dot(ui, dot, width * START_DOT_SCALE, color);
         }
 
         for &line in &puzzle.lines {
@@ -100,7 +105,7 @@ impl EguiDrawer {
         for (&dot_index, &dot_complexity) in &puzzle.dot_complexity {
             let dot = get_dot(dot_index);
             match dot_complexity {
-                DotComplexity::BlackHexagon => self.draw_hexagon(ui, dot, width),
+                DotComplexity::BlackHexagon => self.draw_hexagon_dot(ui, dot, width),
             };
         }
 
@@ -112,25 +117,26 @@ impl EguiDrawer {
                 y: (dot1.y + dot2.y) / 2.0,
             };
             match line_complexity {
-                LineComplexity::BlackHexagon => self.draw_hexagon(ui, dot, width),
+                LineComplexity::LineBreak => self.draw_line_break_dot(ui, (dot1, dot2), width, puzzle.background_color),
+                LineComplexity::BlackHexagon => self.draw_hexagon_dot(ui, dot, width),
             };
         }
 
+        let width = width * PANE_SCALE;
         for (&pane_index, &pane_complexity) in &puzzle.pane_complexity {
             let dot = puzzle.panes[pane_index.0 as usize];
             match pane_complexity {
-                PaneComplexity::Square(color) => self.draw_square(ui, dot, width, color),
+                PaneComplexity::Square(color) => self.draw_square_dot(ui, dot, width, color),
             };
         }
     }
     pub fn draw_path(&self, ui: &mut egui::Ui, puzzle: &Puzzle, solution_manager: &PuzzleSolutionManager) {
         let color = puzzle.solution_color;
         let width = puzzle.line_width * self.draw_rect.width();
-        let start_dot_scale = 3.0;
 
         if solution_manager.is_drawing_solution() {
             let start_dot = solution_manager.get_start_dot_dot_draw();
-            self.draw_dot(ui, start_dot, width * start_dot_scale, color);
+            self.draw_dot(ui, start_dot, width * START_DOT_SCALE, color);
 
             for &(dot1, dot2) in &solution_manager.get_lines_to_draw() {
                 self.draw_dot(ui, dot1, width, color);
@@ -145,21 +151,41 @@ impl EguiDrawer {
         let pos = self.get_point(dot);
         ui.painter().circle_filled(pos, radius, color);
     }
-    pub fn draw_line(&self, ui: &mut egui::Ui, line: (Dot, Dot), width: f32, color: Color32) {
+    fn draw_line(&self, ui: &mut egui::Ui, line: (Dot, Dot), width: f32, color: Color32) {
         let stroke = egui::Stroke::new(width, color);
         let pos1 = self.get_point(line.0);
         let pos2 = self.get_point(line.1);
         ui.painter().line_segment([pos1, pos2], stroke);
     }
-    pub fn draw_hexagon(&self, ui: &mut egui::Ui, dot: Dot, width: f32) {
-        let radius = width / 2.0;
-        let pos = self.get_point(dot);
-        let color = self.convert_color(ComplexityColor::Black);
-        ui.painter().circle_filled(pos, radius, color);
+    fn draw_line_break_dot(&self, ui: &mut egui::Ui, line: (Dot, Dot), width: f32, color: Color32) {
+        self.draw_line_break(ui, (self.get_point(line.0), self.get_point(line.1)), width, color);
     }
-    pub fn draw_square(&self, ui: &mut egui::Ui, dot: Dot, width: f32, color: ComplexityColor) {
-        let pos = self.get_point(dot);
+    pub fn draw_line_break(&self, ui: &mut egui::Ui, line: (Pos2, Pos2), width: f32, color: Color32) {
+        let scale = 0.4;
+        let width = width + 2.0;
+
+        let delta_pos = line.1.to_vec2() - line.0.to_vec2();
+        let pos1 = line.0 + delta_pos * scale;
+        let pos2 = line.0 + delta_pos * (1.0 - scale);
+        let stroke = egui::Stroke::new(width, color);
+        ui.painter().line_segment([pos1, pos2], stroke);
+    }
+
+    fn draw_hexagon_dot(&self, ui: &mut egui::Ui, dot: Dot, width: f32) {
+        self.draw_hexagon(ui, self.get_point(dot), width);
+    }
+    pub fn draw_hexagon(&self, ui: &mut egui::Ui, pos: Pos2, width: f32) {
+        let color = self.convert_color(ComplexityColor::Black);
+        ui.painter().circle_filled(pos, width / 2.0, color);
+    }
+
+    fn draw_square_dot(&self, ui: &mut egui::Ui, dot: Dot, width: f32, color: ComplexityColor) {
+        self.draw_square(ui, self.get_point(dot), width, color);
+    }
+    pub fn draw_square(&self, ui: &mut egui::Ui, pos: Pos2, width: f32, color: ComplexityColor) {
         let color = self.convert_color(color);
-        ui.painter().circle_filled(pos, width, color);
+        let rect = Rect::from_center_size(pos, Vec2::splat(width));
+        let corner_radius = width / 3.0;
+        ui.painter().rect_filled(rect, corner_radius, color);
     }
 }

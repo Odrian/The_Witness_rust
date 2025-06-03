@@ -70,6 +70,11 @@ impl<'a> SolutionChecker<'a> {
                         return Err(SolutionError::LineError(*line_index));
                     }
                 }
+                LineComplexity::LineBreak => {
+                    if self.line_path.contains(line_index) {
+                        return Err(SolutionError::LineError(*line_index));
+                    }
+                }
             }
         }
         Ok(())
@@ -77,10 +82,8 @@ impl<'a> SolutionChecker<'a> {
     fn check_panes(&self) -> Result<(), SolutionError> {
         let map = &self.puzzle.pane_complexity;
         for component in &self.components {
-            let component_complexity: Vec<&PaneComplexity> = component
-                .iter()
-                .filter_map(|pane_index| map.get(pane_index))
-                .collect();
+            let component_complexity: Vec<&PaneComplexity> =
+                component.iter().filter_map(|pane_index| map.get(pane_index)).collect();
 
             let mut squares: HashMap<ComplexityColor, i32> = HashMap::new();
             for complexity in component_complexity {

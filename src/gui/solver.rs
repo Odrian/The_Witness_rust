@@ -56,7 +56,7 @@ impl<'a> SolverApp<'a> {
         Self {
             puzzle,
             solution_manager: PuzzleSolutionManager::new(puzzle),
-            drawer: EguiDrawer::new(),
+            drawer: EguiDrawer::default(),
             is_grabbing_cursor: false,
         }
     }
