@@ -45,6 +45,7 @@ impl eframe::App for SolverApp<'_> {
             );
             self.drawer.draw_puzzle(ui, self.puzzle);
             self.drawer.draw_path(ui, self.puzzle, &self.solution_manager);
+            // self.drawer.draw_debug_pane_connections(ui, self.puzzle, &self.solution_manager);
 
             ctx.request_repaint();
         });

@@ -142,6 +142,20 @@ impl EguiDrawer {
             }
         }
     }
+    pub fn draw_debug_pane_connections(&self, ui: &mut egui::Ui, puzzle: &Puzzle, solution_manager: &PuzzleSolutionManager) {
+        for (pane_index, vec) in puzzle.pane_nears.iter().enumerate() {
+            let dot1 = puzzle.panes[pane_index as usize];
+
+            for (line_index, pane_index2) in vec {
+                let dot2 = puzzle.panes[pane_index2.0 as usize];
+                let dot2 = dot1 + (dot2 - dot1).scale(0.4);
+
+                if !solution_manager.line_path().contains(line_index) {
+                    self.draw_line(ui, (dot1, dot2), 5.0, Color32::PURPLE);
+                }
+            }
+        }
+    }
     pub fn draw_dot(&self, ui: &mut egui::Ui, dot: Dot, width: f32, color: Color32) {
         let radius = width / 2.0;
 
