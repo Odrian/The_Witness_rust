@@ -331,12 +331,16 @@ impl PuzzleSolutionManager<'_> {
                 let line_length = (dot1 - dot2).length();
                 self.puzzle.line_width * 0.5 / line_length * DOT_LEAVE_RADIUS
             };
+
+            if -f32::EPSILON <= proj && proj <= f32::EPSILON {
+                return;
+            }
             if proj > 0.0 {
                 if self.line_progress + proj > 1.0 - dot_leave_progress {
                     self.move_to_dot(line.1);
                     self.dot_pos = (dot1 - dot2).scale(dot_leave_progress);
 
-                    let scale = 1.0 - (1.0 - self.line_progress) / (proj + dot_leave_progress);
+                    let scale = 1.0 - (1.0 - dot_leave_progress - self.line_progress) / proj;
                     self.update_mouse(delta.scale(scale));
                 } else {
                     self.line_progress += proj;
@@ -346,7 +350,7 @@ impl PuzzleSolutionManager<'_> {
                     self.move_to_dot(line.0);
                     self.dot_pos = (dot2 - dot1).scale(dot_leave_progress);
 
-                    let scale = 1.0 - (self.line_progress) / -(proj + dot_leave_progress);
+                    let scale = 1.0 - (dot_leave_progress - self.line_progress) / proj;
                     self.update_mouse(delta.scale(scale));
                 } else {
                     self.line_progress += proj;
