@@ -9,7 +9,7 @@ fn main() -> eframe::Result {
         options,
         Box::new(|cc| {
             egui_extras::install_image_loaders(&cc.egui_ctx);
-            Ok(Box::new(EditorApp::new(cc, &mut puzzle)))
+            Ok(Box::new(SolverApp::new(cc, &mut puzzle)))
         }),
     )
 }

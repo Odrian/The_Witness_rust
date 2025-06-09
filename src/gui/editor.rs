@@ -77,8 +77,8 @@ impl<'a> EditorApp<'a> {
         let mouse_dot = Dot { x: pos.x, y: pos.y };
         // Dot
         let dot_radius = self.puzzle.line_width / 2.0;
-        for (i, dot) in self.puzzle.dots.iter().enumerate() {
-            let dist = mouse_dot.dist(dot);
+        for (i, &dot) in self.puzzle.dots.iter().enumerate() {
+            let dist = (mouse_dot - dot).length();
             if dist < dot_radius {
                 self.selected_object = SelectedObject::Dot(DotIndex(i as u16));
                 return;
@@ -90,30 +90,16 @@ impl<'a> EditorApp<'a> {
             let dot1 = self.get_dot(dot1);
             let dot2 = self.get_dot(dot2);
             let dist = {
-                let ab = Dot {
-                    x: dot2.x - dot1.x,
-                    y: dot2.y - dot1.y,
-                };
-                let ap = Dot {
-                    x: mouse_dot.x - dot1.x,
-                    y: mouse_dot.y - dot1.y,
-                };
+                let ab = dot2 - dot1;
+                let ap = mouse_dot - dot1;
 
-                let ab_len_sq = ab.x * ab.x + ab.y * ab.y;
-                let t = (ap.x * ab.x + ap.y * ab.y) / ab_len_sq;
+                let t = ap.scalar(&ab) / ab.length2();
                 if !(0.0..=1.0).contains(&t) {
                     continue;
                 }
 
-                let proj = Dot {
-                    x: dot1.x + ab.x * t,
-                    y: dot1.y + ab.y * t,
-                };
-
-                let dx = mouse_dot.x - proj.x;
-                let dy = mouse_dot.y - proj.y;
-
-                (dx * dx + dy * dy).sqrt()
+                let proj = dot1 + ab.scale(t);
+                (mouse_dot - proj).length()
             };
             if dist < dot_radius {
                 self.selected_object = SelectedObject::Line(*line_index);
@@ -122,11 +108,10 @@ impl<'a> EditorApp<'a> {
         }
         // Pane
         let pane_radius = self.puzzle.cell_size / 2.0;
-        for (i, dot) in self.puzzle.panes.iter().enumerate() {
+        for (i, &dot) in self.puzzle.panes.iter().enumerate() {
             let dist = {
-                let dx = (mouse_dot.x - dot.x).abs();
-                let dy = (mouse_dot.y - dot.y).abs();
-                dx.max(dy)
+                let Dot { x, y } = mouse_dot - dot;
+                (x.abs()).max(y.abs())
             };
             if dist < pane_radius {
                 self.selected_object = SelectedObject::Pane(PaneIndex(i as u16));
@@ -278,10 +263,7 @@ impl EditorApp<'_> {
             SelectedObject::Line(line_index) => {
                 let dot1 = self.get_dot(line_index.0);
                 let dot2 = self.get_dot(line_index.1);
-                let dot = Dot {
-                    x: (dot1.x + dot2.x) / 2.0,
-                    y: (dot1.y + dot2.y) / 2.0,
-                };
+                let dot = (dot1 + dot2).scale(0.5);
                 self.drawer.draw_dot(ui, dot, width, color);
             }
             SelectedObject::Pane(pane_index) => {

@@ -1,29 +1,48 @@
 use std::collections::HashMap;
+use std::ops::{Add, Sub};
+use std::fmt::Display;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Dot {
     pub x: f32,
     pub y: f32,
 }
 
 impl Dot {
+    pub const ZERO: Self = Self { x: 0.0, y: 0.0 };
+
     pub fn new(x: f32, y: f32) -> Self {
         Dot { x, y }
     }
-    pub fn dist2(&self, other: &Dot) -> f32 {
-        let dx = self.x - other.x;
-        let dy = self.y - other.y;
-        (dx * dx + dy * dy).sqrt()
+    pub fn length2(&self) -> f32 {
+        self.x * self.x + self.y * self.y
     }
-    pub fn dist(&self, other: &Dot) -> f32 {
-        let dx = self.x - other.x;
-        let dy = self.y - other.y;
-        (dx * dx + dy * dy).sqrt()
+    pub fn length(&self) -> f32 {
+        (self.x * self.x + self.y * self.y).sqrt()
     }
-    pub fn interp(&self, other: &Self, coef: &f32) -> Self {
-        let x = self.x + (other.x - self.x) * coef;
-        let y = self.y + (other.y - self.y) * coef;
-        Self::new(x, y)
+    pub fn scalar(&self, other: &Self) -> f32 {
+        self.x * other.x + self.y * other.y
+    }
+    pub fn interp(&self, other: &Self, coef: f32) -> Self {
+        *self + (*other - *self).scale(coef)
+    }
+    pub fn scale(&self, scale: f32) -> Self {
+        Self { x: self.x * scale, y: self.y * scale }
+    }
+}
+
+impl Add for Dot {
+    type Output = Dot;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self { x: self.x + rhs.x, y: self.y + rhs.y }
+    }
+}
+impl Sub for Dot {
+    type Output = Dot;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self { x: self.x - rhs.x, y: self.y - rhs.y }
     }
 }
 
@@ -35,8 +54,6 @@ pub struct LineIndex(pub DotIndex, pub DotIndex);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PaneIndex(pub u16);
-
-use std::fmt::Display;
 
 impl Display for DotIndex {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

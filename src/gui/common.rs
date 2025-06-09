@@ -112,10 +112,7 @@ impl EguiDrawer {
         for (&line_index, &line_complexity) in &puzzle.line_complexity {
             let dot1 = get_dot(line_index.0);
             let dot2 = get_dot(line_index.1);
-            let dot = Dot {
-                x: (dot1.x + dot2.x) / 2.0,
-                y: (dot1.y + dot2.y) / 2.0,
-            };
+            let dot = (dot1 + dot2).scale(0.5);
             match line_complexity {
                 LineComplexity::LineBreak => self.draw_line_break_dot(ui, (dot1, dot2), width, puzzle.background_color),
                 LineComplexity::BlackHexagon => self.draw_hexagon_dot(ui, dot, width),

@@ -14,11 +14,11 @@ impl eframe::App for SolverApp<'_> {
         self.drawer.update(ctx);
 
         if let Some(delta) = self.drawer.get_mouse_delta() {
-            self.solution_manager.update_mouse((delta.x, delta.y));
+            self.solution_manager.update_mouse(Dot::new(delta.x, delta.y));
         }
         if self.drawer.clicked() {
             if let Some(pos) = self.drawer.get_mouse_pos() {
-                let is_solving = self.solution_manager.click((pos.x, pos.y));
+                let is_solving = self.solution_manager.click(Dot::new(pos.x, pos.y));
                 self.is_grabbing_cursor = is_solving;
 
                 let cursor_grab = if is_solving {

@@ -1,16 +1,18 @@
 use super::*;
 use std::cmp;
 
-fn compare_dots(dot0: Dot, dot1: &Dot, dot2: &Dot, delta: (f32, f32)) -> cmp::Ordering {
-    let dot1 = (dot1.x - dot0.x, dot1.y - dot0.y);
-    let dot2 = (dot2.x - dot0.x, dot2.y - dot0.y);
-    let angle0 = (delta.1).atan2(delta.0);
+const DOT_LEAVE_RADIUS: f32 = 1.0;
+
+fn compare_dots(dot0: Dot, dot1: Dot, dot2: Dot, delta: Dot) -> cmp::Ordering {
+    let dot1 = dot1 - dot0;
+    let dot2 = dot2 - dot0;
+    let angle0 = (delta.y).atan2(delta.x);
     let pi = std::f32::consts::PI;
-    let mut angle1 = ((dot1.1).atan2(dot1.0) - angle0).abs();
+    let mut angle1 = ((dot1.y).atan2(dot1.x) - angle0).abs();
     if angle1 > pi {
         angle1 = 2.0 * pi - angle1;
     }
-    let mut angle2 = ((dot2.1).atan2(dot2.0) - angle0).abs();
+    let mut angle2 = ((dot2.y).atan2(dot2.x) - angle0).abs();
     if angle2 > pi {
         angle2 = 2.0 * pi - angle2;
     }
@@ -21,8 +23,11 @@ pub struct PuzzleSolutionManager<'a> {
     puzzle: &'a Puzzle,
     dot_path: Vec<DotIndex>,
     line_path: Vec<LineIndex>,
+
     now_at_dot: bool,
+    dot_pos: Dot, // in local coords
     line_progress: f32,
+
     is_solving: bool,
     is_drawing_solution: bool,
 }
@@ -34,6 +39,7 @@ impl<'a> PuzzleSolutionManager<'a> {
             dot_path: Vec::new(),
             line_path: Vec::new(),
             now_at_dot: false,
+            dot_pos: Dot::ZERO,
             line_progress: 0.0,
             is_solving: false,
             is_drawing_solution: false,
@@ -59,7 +65,34 @@ impl<'a> PuzzleSolutionManager<'a> {
         }
         let line_to_dots = |line: &LineIndex| -> (Dot, Dot) { (self.get_dot(line.0), self.get_dot(line.1)) };
         if self.now_at_dot {
-            self.line_path.iter().map(line_to_dots).collect()
+            let mut lines: Vec<_> = self.line_path.iter().map(line_to_dots).collect();
+
+            let near_line_option = self.get_near_line_on_dot(self.dot_pos);
+            if let Some(near_line) = near_line_option {
+                let dot_at = self.last_dot();
+                let mut proj = self.get_projection(near_line, self.dot_pos);
+                if dot_at == near_line.1 {
+                    proj += 1.0;
+                }
+
+                let dot1 = self.get_dot(near_line.0);
+                let dot2 = self.get_dot(near_line.1);
+                let dot_proj = dot1 + (dot2 - dot1).scale(proj);
+                if self.line_path.last() == Some(&near_line) {
+                    lines.pop();
+                    if self.last_dot() == near_line.1 {
+                        lines.push((dot1, dot_proj));
+                    } else {
+                        lines.push((dot_proj, dot2));
+                    }
+                } else if self.last_dot() == near_line.0 {
+                    lines.push((dot1, dot_proj));
+                } else {
+                    lines.push((dot_proj, dot2));
+                }
+            }
+
+            lines
         } else {
             let (last_line, lines) = self
                 .line_path
@@ -71,12 +104,12 @@ impl<'a> PuzzleSolutionManager<'a> {
             let dot1 = self.get_dot(last_line.0);
             let dot2 = self.get_dot(last_line.1);
 
+            let dot_middle = dot1 + (dot2 - dot1).scale(self.line_progress);
+
             if last_line.0 == self.last_dot() {
-                let dot2 = dot1.interp(&dot2, &self.line_progress);
-                lines.push((dot1, dot2));
+                lines.push((dot1, dot_middle));
             } else {
-                let dot1 = dot1.interp(&dot2, &self.line_progress);
-                lines.push((dot1, dot2));
+                lines.push((dot_middle, dot2));
             }
             lines
         }
@@ -116,6 +149,7 @@ impl PuzzleSolutionManager<'_> {
         self.is_solving = true;
         self.dot_path.push(start_dot);
         self.now_at_dot = true;
+        self.dot_pos = Dot::ZERO;
     }
 
     fn move_to_dot(&mut self, dot: DotIndex) {
@@ -138,6 +172,7 @@ impl PuzzleSolutionManager<'_> {
             self.dot_path.push(dot);
         }
         self.now_at_dot = true;
+        self.dot_pos = Dot::ZERO;
     }
 
     fn move_to_line(&mut self, line: LineIndex) {
@@ -178,11 +213,51 @@ impl PuzzleSolutionManager<'_> {
             .last()
             .expect("line_path can't be empty while now_at_dot==false")
     }
+
+    fn get_projection(&self, line: LineIndex, delta: Dot) -> f32 {
+        let dot = {
+            let dot1 = self.get_dot(line.0);
+            let dot2 = self.get_dot(line.1);
+            dot2 - dot1
+        };
+
+        delta.scalar(&dot) / dot.length2()
+    }
+
+    fn get_near_line_on_dot(&self, delta: Dot) -> Option<LineIndex> {
+        if !self.now_at_dot {
+            panic!("must be on dot");
+        }
+
+        let dot_ind = self.last_dot();
+        let dot = self.get_dot(dot_ind);
+
+        let line_get_not = |line: LineIndex| DotIndex(line.0.0 + line.1.0 - dot_ind.0);
+        let (&near_line, _) = self
+            .puzzle
+            .lines
+            .iter()
+            .filter(|line| line.contains(dot_ind)) // get line from 'dot'
+            .map(|line| (line, self.get_dot(line_get_not(*line)))) // get second Dot
+            .min_by(|(_, dot1), (_, dot2)| compare_dots(dot, *dot1, *dot2, delta)) // get nearest to delta vector
+            .expect("dot {dot} don't have line from it");
+
+        let scalar = {
+            let dot2 = self.get_dot(line_get_not(near_line));
+            (dot2 - dot).scalar(&delta)
+        };
+        if scalar > 0.0 { Some(near_line) } else { None }
+    }
+    fn get_line_length(&self, line: LineIndex) -> f32 {
+        let dot1 = self.get_dot(line.0);
+        let dot2 = self.get_dot(line.1);
+        (dot1 - dot2).length()
+    }
 }
 
 impl PuzzleSolutionManager<'_> {
     /// returns 'is_solving'
-    pub fn click(&mut self, mouse_pos: (f32, f32)) -> bool {
+    pub fn click(&mut self, mouse_pos: Dot) -> bool {
         if self.is_solving {
             match check_solution(self) {
                 Ok(()) => {
@@ -199,13 +274,9 @@ impl PuzzleSolutionManager<'_> {
             // try start solving
             for &dot_index in &self.puzzle.start_dots {
                 let dot = self.get_dot(dot_index);
-                let dist2 = {
-                    let dx = dot.x - mouse_pos.0;
-                    let dy = dot.y - mouse_pos.1;
-                    dx * dx + dy * dy
-                };
+                let dist = (dot - mouse_pos).length();
                 let start_dot_radius = 0.045; // TODO: dont use magic value
-                if dist2 <= start_dot_radius * start_dot_radius {
+                if dist <= start_dot_radius {
                     self.start_from(dot_index);
                     return true;
                 }
@@ -214,54 +285,35 @@ impl PuzzleSolutionManager<'_> {
         }
     }
 
-    pub fn update_mouse(&mut self, delta: (f32, f32)) {
+    pub fn update_mouse(&mut self, delta: Dot) {
         if !self.is_solving {
             return;
         }
-        if delta.0.abs() < f32::EPSILON && delta.1.abs() < f32::EPSILON {
+        if delta.x.abs() < f32::EPSILON && delta.y.abs() < f32::EPSILON {
             return;
         }
         if self.now_at_dot {
-            let dot_ind = self.last_dot();
-            let dot = self.get_dot(dot_ind);
+            self.dot_pos = self.dot_pos + delta;
 
-            let line_get_not = |line: LineIndex| DotIndex(line.0.0 + line.1.0 - dot_ind.0);
-            let (&near_line, _) = self
-                .puzzle
-                .lines
-                .iter()
-                .filter(|line| line.contains(dot_ind)) // get line from 'dot'
-                .map(|line| (line, self.get_dot(line_get_not(*line)))) // get second Dot
-                .min_by(|(_, dot1), (_, dot2)| compare_dots(dot, dot1, dot2, delta)) // get nearest to delta vector
-                .expect("dot {dot} don't have line from it");
-
-            let scalar = {
-                let dot2 = self.get_dot(line_get_not(near_line));
-                (dot2.x - dot.x) * delta.0 + (dot2.y - dot.y) * delta.1
-            };
-            if scalar > 0.0 {
-                self.move_to_line(near_line);
-                self.line_progress = if near_line.0 == dot_ind { 0.0 } else { 1.0 };
-                self.update_mouse(delta);
+            let dist = self.dot_pos.length();
+            let max_dist = self.puzzle.line_width * DOT_LEAVE_RADIUS;
+            if dist > max_dist {
+                let near_line_option = self.get_near_line_on_dot(delta);
+                if let Some(near_line) = near_line_option {
+                    let dot_ind = self.last_dot();
+                    self.move_to_line(near_line);
+                    self.line_progress = if near_line.0 == dot_ind { 0.0 } else { 1.0 };
+                    self.update_mouse(self.dot_pos);
+                }
             }
         } else {
             let line = self.last_line_while_at_line();
-            let (dx, dy) = {
-                let dot1 = self.get_dot(line.0);
-                let dot2 = self.get_dot(line.1);
-                (dot2.x - dot1.x, dot2.y - dot1.y)
-            };
-
-            let mut proj = {
-                let scalar = delta.0 * dx + delta.1 * dy;
-                let length = (dx * dx + dy * dy).sqrt();
-                scalar / length / length
-            };
+            let mut proj = self.get_projection(line, delta);
 
             let has_line_break = self.puzzle.line_complexity.get(&line) == Some(&LineComplexity::LineBreak);
-            println!("{}", has_line_break);
             if has_line_break {
-                let max_progress = LINE_BREAK_WIDTH;
+                let line_length = self.get_line_length(line);
+                let max_progress = LINE_BREAK_WIDTH - self.puzzle.line_width / line_length * 0.5;
                 if self.line_progress < 0.5 {
                     if self.line_progress + proj > max_progress {
                         proj = max_progress - self.line_progress
@@ -273,19 +325,29 @@ impl PuzzleSolutionManager<'_> {
                 }
             }
 
+            let dot1 = self.get_dot(line.0);
+            let dot2 = self.get_dot(line.1);
+            let dot_leave_progress = {
+                let line_length = (dot1 - dot2).length();
+                self.puzzle.line_width * 0.5 / line_length * DOT_LEAVE_RADIUS
+            };
             if proj > 0.0 {
-                if self.line_progress + proj > 1.0 {
+                if self.line_progress + proj > 1.0 - dot_leave_progress {
                     self.move_to_dot(line.1);
-                    let scale = 1.0 - (1.0 - self.line_progress) / proj;
-                    self.update_mouse((delta.0 * scale, delta.1 * scale));
+                    self.dot_pos = (dot1 - dot2).scale(dot_leave_progress);
+
+                    let scale = 1.0 - (1.0 - self.line_progress) / (proj + dot_leave_progress);
+                    self.update_mouse(delta.scale(scale));
                 } else {
                     self.line_progress += proj;
                 }
             } else {
-                if self.line_progress + proj < 0.0 {
+                if self.line_progress + proj < dot_leave_progress {
                     self.move_to_dot(line.0);
-                    let scale = 1.0 - self.line_progress / (-proj);
-                    self.update_mouse((delta.0 * scale, delta.1 * scale));
+                    self.dot_pos = (dot2 - dot1).scale(dot_leave_progress);
+
+                    let scale = 1.0 - (self.line_progress) / -(proj + dot_leave_progress);
+                    self.update_mouse(delta.scale(scale));
                 } else {
                     self.line_progress += proj;
                 }
