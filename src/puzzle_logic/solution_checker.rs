@@ -105,23 +105,23 @@ impl<'a> SolutionChecker<'a> {
 fn find_components(puzzle: &Puzzle, line_path: &[LineIndex]) -> Vec<Vec<PaneIndex>> {
     let n = puzzle.pane_nears.len();
     let mut color: Vec<i32> = vec![0; n]; // 0
-    let mut group: Vec<i32> = vec![-1; n];
-    let mut group_id_counter = 0;
+
+    let mut components = Vec::new();
 
     for id in 0..n {
         if color[id] == 2 {
             continue;
         }
 
-        let group_id = group_id_counter;
-        group_id_counter += 1;
+        let group_id = components.len();
+        components.push(Vec::new());
 
         let mut stack = vec![id];
         color[id] = 1;
         while let Some(id1) = stack.pop() {
             color[id1] = 2;
-            group[id1] = group_id;
-            let near = &puzzle.pane_nears[id];
+            components[group_id].push(PaneIndex(id1 as u16));
+            let near = &puzzle.pane_nears[id1];
             for (line_index, PaneIndex(id2)) in near {
                 let id2 = (*id2) as usize;
                 if !line_path.contains(line_index) && color[id2] == 0 {
@@ -132,9 +132,19 @@ fn find_components(puzzle: &Puzzle, line_path: &[LineIndex]) -> Vec<Vec<PaneInde
         }
     }
 
-    let mut components = vec![Vec::new(); group_id_counter as usize];
-    for id in 0..n {
-        components[group[id] as usize].push(PaneIndex(id as u16))
-    }
     components
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+ 
+    #[test]
+    fn test_find_components() {
+        let puzzle = Puzzle::default();
+        let empty_path = Vec::new();
+        let vecs = find_components(&puzzle, &empty_path);
+        assert_eq!(1, vecs.len());
+        assert_eq!(puzzle.panes.len(), vecs[0].len());
+    }
 }

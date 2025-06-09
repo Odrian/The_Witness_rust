@@ -205,19 +205,19 @@ impl Default for Puzzle {
 
                 if x > 0 {
                     let ind_near = ind - 1; // left
-                    vec.push((horizontal_lines[y][x], PaneIndex(ind_near as u16)));
+                    vec.push((vertical_lines[y][x], PaneIndex(ind_near as u16)));
                 }
                 if y > 0 {
                     let ind_near = ind - m; // down
-                    vec.push((vertical_lines[y][x], PaneIndex(ind_near as u16)));
+                    vec.push((horizontal_lines[y][x], PaneIndex(ind_near as u16)));
                 }
                 if x + 1 < m {
                     let ind_near = ind + 1; // right
-                    vec.push((horizontal_lines[y][x], PaneIndex(ind_near as u16)));
+                    vec.push((vertical_lines[y][x+1], PaneIndex(ind_near as u16)));
                 }
                 if y + 1 < m {
                     let ind_near = ind + m; // up
-                    vec.push((vertical_lines[y][x], PaneIndex(ind_near as u16)));
+                    vec.push((horizontal_lines[y+1][x], PaneIndex(ind_near as u16)));
                 }
             }
         }
