@@ -14,9 +14,7 @@ fn compare_dots(dot0: Dot, dot1: &Dot, dot2: &Dot, delta: (f32, f32)) -> cmp::Or
     if angle2 > pi {
         angle2 = 2.0 * pi - angle2;
     }
-    angle1
-        .partial_cmp(&angle2)
-        .expect("don't expect lines to degenerate")
+    angle1.partial_cmp(&angle2).expect("don't expect lines to degenerate")
 }
 
 pub struct PuzzleSolutionManager<'a> {
@@ -59,8 +57,7 @@ impl<'a> PuzzleSolutionManager<'a> {
         if !self.is_drawing_solution {
             panic!("not drawing now")
         }
-        let line_to_dots =
-            |line: &LineIndex| -> (Dot, Dot) { (self.get_dot(line.0), self.get_dot(line.1)) };
+        let line_to_dots = |line: &LineIndex| -> (Dot, Dot) { (self.get_dot(line.0), self.get_dot(line.1)) };
         if self.now_at_dot {
             self.line_path.iter().map(line_to_dots).collect()
         } else {
@@ -255,11 +252,26 @@ impl PuzzleSolutionManager<'_> {
                 (dot2.x - dot1.x, dot2.y - dot1.y)
             };
 
-            let proj = {
+            let mut proj = {
                 let scalar = delta.0 * dx + delta.1 * dy;
                 let length = (dx * dx + dy * dy).sqrt();
                 scalar / length / length
             };
+
+            let has_line_break = self.puzzle.line_complexity.get(&line) == Some(&LineComplexity::LineBreak);
+            println!("{}", has_line_break);
+            if has_line_break {
+                let max_progress = LINE_BREAK_WIDTH;
+                if self.line_progress < 0.5 {
+                    if self.line_progress + proj > max_progress {
+                        proj = max_progress - self.line_progress
+                    }
+                } else {
+                    if self.line_progress + proj < 1.0 - max_progress {
+                        proj = 1.0 - max_progress - self.line_progress
+                    }
+                }
+            }
 
             if proj > 0.0 {
                 if self.line_progress + proj > 1.0 {

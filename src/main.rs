@@ -7,6 +7,9 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "The Witness",
         options,
-        Box::new(|cc| Ok(Box::new(EditorApp::new(cc, &mut puzzle)))),
+        Box::new(|cc| {
+            egui_extras::install_image_loaders(&cc.egui_ctx);
+            Ok(Box::new(EditorApp::new(cc, &mut puzzle)))
+        }),
     )
 }

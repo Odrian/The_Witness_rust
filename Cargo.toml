@@ -9,5 +9,6 @@ split-debuginfo = "off"
 
 [dependencies]
 eframe = "0.31.1"
+egui_extras = { version = "0.31.1", features = ["default", "all_loaders"] }
 enum-iterator = "2.1.0"
 rand = "0.9.1"

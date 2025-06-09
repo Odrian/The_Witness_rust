@@ -161,7 +161,7 @@ impl EguiDrawer {
         self.draw_line_break(ui, (self.get_point(line.0), self.get_point(line.1)), width, color);
     }
     pub fn draw_line_break(&self, ui: &mut egui::Ui, line: (Pos2, Pos2), width: f32, color: Color32) {
-        let scale = 0.4;
+        let scale = LINE_BREAK_WIDTH;
         let width = width + 2.0;
 
         let delta_pos = line.1.to_vec2() - line.0.to_vec2();
@@ -175,8 +175,9 @@ impl EguiDrawer {
         self.draw_hexagon(ui, self.get_point(dot), width);
     }
     pub fn draw_hexagon(&self, ui: &mut egui::Ui, pos: Pos2, width: f32) {
-        let color = self.convert_color(ComplexityColor::Black);
-        ui.painter().circle_filled(pos, width / 2.0, color);
+        let rect = Rect::from_center_size(pos, Vec2::new(width * 0.9, width * 0.8));
+        let image = egui::Image::new(egui::include_image!("../../assets/hexagon.png"));
+        image.paint_at(ui, rect);
     }
 
     fn draw_square_dot(&self, ui: &mut egui::Ui, dot: Dot, width: f32, color: ComplexityColor) {

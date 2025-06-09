@@ -66,18 +66,18 @@ impl LineIndex {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum DotComplexity {
     BlackHexagon,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum LineComplexity {
     BlackHexagon,
     LineBreak,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum PaneComplexity {
     Square(ComplexityColor),
     // Star(Color)
@@ -223,6 +223,14 @@ impl Default for Puzzle {
         let mut dot_complexity = HashMap::new();
         dot_complexity.insert(DotIndex(2), DotComplexity::BlackHexagon);
 
+        let mut line_complexity = HashMap::new();
+        line_complexity.insert(lines[5], LineComplexity::BlackHexagon);
+        line_complexity.insert(lines[8], LineComplexity::LineBreak);
+
+        let mut pane_complexity = HashMap::new();
+        pane_complexity.insert(PaneIndex(3), PaneComplexity::Square(ComplexityColor::Black));
+        pane_complexity.insert(PaneIndex(4), PaneComplexity::Square(ComplexityColor::White));
+
         Puzzle {
             dots,
             lines,
@@ -232,8 +240,8 @@ impl Default for Puzzle {
             start_dots,
             end_dots,
             dot_complexity,
-            line_complexity: HashMap::new(),
-            pane_complexity: HashMap::new(),
+            line_complexity,
+            pane_complexity,
 
             line_width: 0.035,
             background_color: Color32::from_rgb(228, 165, 0),

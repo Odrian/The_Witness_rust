@@ -216,6 +216,11 @@ impl EditorApp<'_> {
         let painter = ui.painter_at(rect);
         let color = self.drawer.convert_color(compl_color);
 
+        let mut rect = rect;
+        if self.selected_color != compl_color {
+            rect = rect.scale_from_center(0.8);
+        }
+
         painter.rect_filled(rect, 0.0, color);
         let selected = self.selected_color == compl_color;
         if selected {
@@ -235,7 +240,7 @@ impl EditorApp<'_> {
 
         match complexity {
             SelectedComplexity::Hexagon => {
-                self.drawer.draw_hexagon(ui, pos, width);
+                self.drawer.draw_hexagon(ui, pos, width * 0.7);
             }
             SelectedComplexity::LineBreak => {
                 let pos1 = rect.left_center();

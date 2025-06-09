@@ -7,6 +7,8 @@ pub use puzzle::{Dot, DotIndex, LineIndex, PaneIndex, Puzzle};
 pub use solution_checker::{SolutionError, check_solution};
 pub use solution_manager::PuzzleSolutionManager;
 
+pub const LINE_BREAK_WIDTH: f32 = 0.4;
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -23,10 +25,7 @@ mod test {
             let y = rng.random();
             puzzle_manager.click((x, y));
         }
-        while !puzzle
-            .end_dots
-            .contains(puzzle_manager.dot_path().last().unwrap())
-        {
+        while !puzzle.end_dots.contains(puzzle_manager.dot_path().last().unwrap()) {
             let delta = 0.02;
             let x: f32 = rng.random();
             let y: f32 = rng.random();
